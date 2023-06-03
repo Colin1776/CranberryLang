@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "string.h": "c",
+        "stdio.h": "c",
+        "compare": "c",
+        "atomic": "c",
+        "*.tcc": "c",
+        "bitset": "c",
+        "chrono": "c",
+        "cmath": "c",
+        "random": "c",
+        "functional": "c",
+        "istream": "c",
+        "limits": "c",
+        "streambuf": "c",
+        "tuple": "c",
+        "type_traits": "c"
+    }
+}
