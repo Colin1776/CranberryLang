@@ -330,56 +330,85 @@ struct ASTNode* operator(enum Operator op, struct ASTNode* left, struct ASTNode*
 	return node;
 }
 
-void parse_vardef(struct Parser* parser, struct ASTNode* node)
+struct ASTRoot* parse_params(struct Parser* parser)
 {
-	struct ASTNode* type_node = malloc(sizeof(struct ASTNode));
-	type_node->type = AST_IDENTIIFER;
-	type_node->string = node->string;
-	
-	struct ASTVarDef* var_def = malloc(sizeof(struct ASTVarDef));
-	var_def->type = type_node;
-	var_def->ident = parser->token_array[parser->current_token].string;
-	
-	struct Token* token = get_next_token(*parser);
-	
-	parser->current_token++;
-	
-	if (token->type == ';')
-	{
-		node->type = AST_VAR_DEF;
-		node->var_def = var_def;
-		parser->current_token++;
-	}
-	else if (token->type == '=')
-	{
-		struct ASTBinaryOp* bin_op = malloc(sizeof(struct ASTBinaryOp));
-		bin_op->operator = OP_ASSIGN;
-		
-		struct ASTNode* left_node = malloc(sizeof(struct ASTNode));
-		left_node->type = AST_VAR_DEF;
-		left_node->var_def = var_def;
-		bin_op->left = left_node;
-		
-		parser->current_token++;
-		bin_op->right = parse_expression(parser, 0);
-		
-		node->type = AST_BINARY_OP;
-		node->binary_op = bin_op;
-	}
-	else if (token->type == '(')
-	{
-		if (parser->func_scope)
-		{
-			printf("can't define a function inside func scope lol!\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		printf("there's an error among us\n");
-	}
-}
+	struct ASTRoot* params = malloc(sizeof(struct ASTRoot));
+	params->max_nodes = 10;
+	params->number_of_nodes = 0;
 
+	params->nodes = malloc(sizeof(struct ASTNode) * params->max_nodes);
+
+	struct ASTNode* node;
+
+	while (1)
+	{
+		if (params->number_of_nodes == params->max_nodes)
+        {
+            params->max_nodes += 10;
+            params->nodes = realloc(params->nodes, sizeof(struct ASTNode) * params->max_nodes);
+        }
+
+		struct Token token = parser->token_array[parser->current_token];
+
+		if (token.type != TOKEN_IDENTIFIER)
+			parser_error(*parser, *node, token, "Invalid token for parameter type in function definition");
+
+		
+
+		struct Token next = *get_next_token(*parser);
+
+		if (next.type != TOKEN_IDENTIFIER)
+			parser_error(*parser, *node, token, "Invalid token for parameter identifier in function definition");
+
+		parser->current_token += 2;
+
+		struct Token sep = parser->token_array[parser->current_token];
+
+		if (sep.type == ',')
+		{
+			struct ASTVarDef* var_def = malloc(sizeof(struct ASTVarDef));
+			var_def->type = malloc(sizeof(struct ASTNode));
+			var_def->type->type = AST_IDENTIIFER;
+			var_def->type->string = token.string;
+			var_def->ident = next.string;
+
+			node = malloc(sizeof(struct ASTNode));
+			node->type = AST_VAR_DEF;
+			node->var_def = var_def;
+
+			params->nodes[params->number_of_nodes] = *node;
+			params->number_of_nodes++;
+
+			parser->current_token++;
+		}
+		else if (sep.type == ')')
+		{
+			struct ASTVarDef* var_def = malloc(sizeof(struct ASTVarDef));
+			var_def->type = malloc(sizeof(struct ASTNode));
+			var_def->type->type = AST_IDENTIIFER;
+			var_def->type->string = token.string;
+			var_def->ident = next.string;
+
+			node = malloc(sizeof(struct ASTNode));
+			node->type = AST_VAR_DEF;
+			node->var_def = var_def;
+
+			params->nodes[params->number_of_nodes] = *node;
+			params->number_of_nodes++;
+
+			parser->current_token++;
+			break;
+		}
+		else
+		{
+			parser_error(*parser, *node, token, "Extra token after identifier in parameter, this bad get rid of :)");
+			// error what the heck you should NOT have stuff here :cry:
+		}
+
+	}
+
+	return params;
+}
 
 
 void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
@@ -390,8 +419,7 @@ void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 
 	char* ident = parser->token_array[parser->current_token].string;
 
-	struct Token token = *get_next_token(*parser);
-	parser->current_token++; // token is now the thing after the ident token, for example, if the code was "int x = ...", the token would now be at '='
+	struct Token token = *get_next_token(*parser); // this token should be the symbol after 2 identifiers or something
 
 	if (token.type == '(')
 	{
@@ -402,8 +430,20 @@ void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 		func_def->return_type = type_node;
 		func_def->func_name = ident;
 
+		parser->current_token += 2; // token should now be at the thing after the '('
+		func_def->args = parse_params(parser);
 
-		// this is going to be a function definition right here :)
+		token = parser->token_array[parser->current_token];
+
+		if (token.type != '{')
+			parser_error(*parser, *node, token, "Expected a '{' after if statement definition");
+		
+		parser->current_token++;
+
+		func_def->block = parse_block(parser);
+
+		node->type = AST_FUNC_DEF;
+		node->func_def = func_def;
 
 		// early exit
 		return;
@@ -489,7 +529,6 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 			node->literal = literal;}
 			break;
 		default:
-			printf("sussy gussy\n");
 			break;
 	}
 
@@ -511,7 +550,6 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 				return node;
 			case ',':
 				parser->current_token += 2;
-				printf("token: %d\n", token.type);
 				return node;
 			case ';':
 				parser->current_token += 2;
@@ -584,7 +622,8 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 	if (next->type == TOKEN_IDENTIFIER)
 	{
 		parser->current_token++;
-		parse_vardef(parser, node);
+		parse_typed_definition(parser, node);
+		//parse_vardef(parser, node);
 	}
 	else if (next->type == '.')
 	{
@@ -621,9 +660,10 @@ struct ASTRoot* parse(struct Parser* parser)
     return root;
 }
 
-void parser_error(struct Parser parser, struct ASTNode, struct Token, char* error_msg)
+void parser_error(struct Parser parser, struct ASTNode, struct Token token, char* error_msg)
 {
 	printf("%s\n", error_msg);
+	printf("Token type: %d\n", token.type);
 	exit(-1);
 }
 
