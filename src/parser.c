@@ -19,7 +19,9 @@ enum ASTType
     AST_VAR_DEF,
 	AST_ARRAY_TYPE,
 	AST_BINARY_OP,
-	AST_LITERAL
+	AST_LITERAL,
+	AST_RETURN,
+	AST_IF
 };
 
 struct ASTNode
@@ -34,6 +36,7 @@ struct ASTNode
 		struct ASTArrayType* arr_type;
 		struct ASTBinaryOp* binary_op;
 		struct ASTLiteral* literal;
+		struct ASTNode* return_expression;
     };
     
 };
@@ -76,6 +79,14 @@ struct ASTBinaryOp
 	struct ASTNode* left;
 	struct ASTNode* right;
 };
+
+struct ASTIfStatement
+{
+	struct ASTNode* condition;
+	struct ASTRoot* block;
+	struct ASTNode* else_block;
+};
+
 
 enum LiteralType
 {
@@ -410,7 +421,6 @@ struct ASTRoot* parse_params(struct Parser* parser)
 	return params;
 }
 
-
 void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 {
 	struct ASTNode* type_node = malloc(sizeof(struct ASTNode));
@@ -425,6 +435,8 @@ void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 	{
 		if (parser->func_scope)
 			parser_error(*parser, *node, token, "Defining a function is not allowed in the scope of a function definition");
+
+		parser->func_scope = true;
 		
 		struct ASTFuncDef* func_def = malloc(sizeof(struct ASTFuncDef));
 		func_def->return_type = type_node;
@@ -444,6 +456,8 @@ void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 
 		node->type = AST_FUNC_DEF;
 		node->func_def = func_def;
+
+		parser->func_scope = false;
 
 		// early exit
 		return;
@@ -481,6 +495,18 @@ void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 		parser_error(*parser, *node, token, "Invalid symbol after variable definition");
 	}
 	
+}
+
+void parse_return(struct Parser* parser, struct ASTNode* node)
+{
+	printf("among us!!!\n");
+	
+	if (!parser->func_scope)
+		parser_error(*parser, *node, *(struct Token*)0, "Return has to be in function scope, idiot");
+
+	node->type = AST_RETURN;
+	parser->current_token++;
+	node->return_expression = parse_expression(parser, 0);
 }
 
 /*
@@ -602,6 +628,9 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
         case TOKEN_KEYWORD_MAIN:
             parse_main(parser, node);
             return node;
+		case TOKEN_KEYWORD_RETURN:
+			parse_return(parser, node);
+			return node;
 		case ';':
 		 	node->type = 567;
 		 	parser->current_token++;
@@ -623,7 +652,6 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 	{
 		parser->current_token++;
 		parse_typed_definition(parser, node);
-		//parse_vardef(parser, node);
 	}
 	else if (next->type == '.')
 	{
@@ -769,7 +797,7 @@ void print_binary_op(struct ASTNode node, u8 num_tabs)
 	struct ASTNode right = *bin_op.right;
 	print_tabs(num_tabs + 1);
 	printf("Right: \n");
-	print_AST_node(right, 0, num_tabs + 2);
+	print_AST_node(right, 1, num_tabs + 2);
 
 }
 
@@ -810,6 +838,11 @@ void print_AST_func_call(struct ASTNode node, u8 num_tabs)
 	}
 }
 
+void print_AST_return(struct ASTNode node, u8 num_tabs)
+{
+	printf("Return Statement: \n");
+	print_AST_node(*node.return_expression, 1, num_tabs + 1);
+}
 
 // TODO redo entire print system to just do the tabs here in a standard way or smthn
 void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
@@ -843,6 +876,9 @@ void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
 		case AST_LITERAL:
 			print_AST_literal(node);
 			break;	
+		case AST_RETURN:
+			print_AST_return(node, num_tabs);
+			break;
         default:
             printf("Node type: %d\n", node.type);
             break;

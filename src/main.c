@@ -25,6 +25,11 @@ typedef u8 bool;
 #include "lexer.c"
 #include "parser.c"
 
+int new_func()
+{
+    
+}
+
 int main(int argc, char** argv)
 {
     char* file = NULL;
