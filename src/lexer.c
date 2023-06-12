@@ -1,3 +1,5 @@
+#include "types.c"
+
 /* Type Definitions :) */
 
 enum TokenType
@@ -259,12 +261,13 @@ void handle_word(struct Token* token, struct Lexer* lexer)
     }
 
     int size_of_ident = token->char_end - token->char_start;
-    char* ident_string = malloc(sizeof(char) * size_of_ident);
+    char* ident_string = malloc(sizeof(char) * size_of_ident + 1);
 
     for (int i = 0; i < size_of_ident; i++)
     {
         ident_string[i] = lexer->file_data[token->char_start + i];
     }
+    ident_string[size_of_ident] = '\0';
 
     int keyword = get_keyword(ident_string, size_of_ident);
     token->type = keyword;

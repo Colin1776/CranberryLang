@@ -1,3 +1,7 @@
+#include "types.c"
+#include <time.h>
+#include <stdio.h>
+
 u64 current_time_microseconds()
 {
     struct timespec time;

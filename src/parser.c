@@ -1,3 +1,5 @@
+#include "types.c"
+
 enum Operator
 {
     OP_ACCESS,
