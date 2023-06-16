@@ -932,6 +932,16 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
 	struct ASTNode cond = *if_statement.condition;
 	print_AST_node(cond, 0, num_tabs + 2);
 
+	struct ASTRoot block = *if_statement.block;
+	print_tabs(num_tabs + 1);
+	printf("Block:\n");
+
+	for (u64 i = 0; i < block.number_of_nodes; i++)
+	{
+		struct ASTNode node = block.nodes[i];
+		print_AST_node(node, 1, num_tabs + 2);
+	}
+
 	// print the block here hold up
 }
 
