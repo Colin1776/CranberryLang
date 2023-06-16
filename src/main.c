@@ -9,7 +9,6 @@
 #include "types.c"
 #include "util.c"
 #include "modulizer.c"
-#include "lexer.c"
 #include "parser.c"
 
 

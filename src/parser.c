@@ -1,4 +1,5 @@
 #include "types.c"
+#include "lexer.c"
 
 enum Operator
 {
@@ -8,7 +9,9 @@ enum Operator
 	OP_ADD,
 	OP_SUBTRACT,
 	OP_MULTIPLY,
-	OP_DIVIDE
+	OP_DIVIDE,
+
+	OP_EQUALITY
 };
 
 enum ASTType
@@ -39,6 +42,7 @@ struct ASTNode
 		struct ASTBinaryOp* binary_op;
 		struct ASTLiteral* literal;
 		struct ASTNode* return_expression;
+		struct ASTIfStatement* if_statement;
     };
     
 };
@@ -160,16 +164,18 @@ u32 get_precedence(struct Token token)
 		case ')':
 		case ',':
 			return 0;
+		case TOKEN_EQUALITY:
+			return 1;
 		case '+':
 		case '-':
-			return 1;
+			return 2;
 		case '*':
 		case '/':
-			return 2;
-		case '.':
 			return 3;
+		case '.':
+			return 4;
 		default:
-			printf("Error: unknown precedence for token of type: %c\n", token.type);
+			printf("Error: unknown precedence for token of type: %c on line: %d\n", token.type, token.line);
 			exit(-1);
 	}
 }
@@ -501,7 +507,7 @@ void parse_typed_definition(struct Parser* parser, struct ASTNode* node)
 
 void parse_return(struct Parser* parser, struct ASTNode* node)
 {
-	printf("among us!!!\n");
+	//printf("among us!!!\n");
 	
 	if (!parser->func_scope)
 		parser_error(*parser, *node, *(struct Token*)0, "Return has to be in function scope, idiot");
@@ -597,17 +603,81 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 			case '/':
 				parser->current_token += 2;
 				node = operator(OP_DIVIDE, node, parse_expression(parser, prec + 1));
+				break;
 			case '.':
 				parser->current_token += 2;
 				node = operator(OP_ACCESS, node, parse_expression(parser, prec + 1));
+				break;
+			case TOKEN_EQUALITY:
+				parser->current_token += 2;
+				node = operator(OP_EQUALITY, node, parse_expression(parser, prec + 1));
+				break;
 		}
 
 		next = get_next_token(*parser);
 		prec = get_precedence(*next);
+
+		printf("%d\n", next->type);
 	}
 		
 	return node;
 }
+
+struct ASTRoot* from_node(struct ASTNode* node)
+{
+	struct ASTRoot* ret = malloc(sizeof(struct ASTRoot));
+	ret->max_nodes = 1;
+	ret->number_of_nodes = 1;
+	ret->nodes = malloc(sizeof(struct ASTNode));
+	ret->nodes[0] = *node;
+}
+
+void parse_if(struct Parser* parser, struct ASTNode* node)
+{
+	printf("If print #1\n");
+	struct Token token = *get_next_token(*parser);
+
+	if (token.type != '(')
+		parser_error(*parser, *node, token, "parenthesis expected\n");
+
+	parser->current_token += 2;
+
+	printf("If print #1.1\n");
+	struct ASTIfStatement* if_stmnt = malloc(sizeof(struct ASTIfStatement));
+
+	if_stmnt->condition = parse_expression(parser, 0);
+
+	printf("If print #2\n");
+
+	
+	parser->current_token += 1;
+	token = parser->token_array[parser->current_token];	
+
+	if (token.type == '{')
+	{
+		printf("if print #2.1\n");
+		if_stmnt->block = parse_block(parser);
+	}
+	else
+	{
+		printf("if print #2.2: %d\n", token.type);
+		if_stmnt->block = from_node(parse_statement(parser, 0));
+	}
+
+	printf("If print #3\n");
+
+	token = parser->token_array[parser->current_token];
+
+	// if (token.type == TOKEN_KEYWORD_ELSE)
+	// {
+	// 	if_stmnt->else_block = parse_statement(parser, 0);
+	// }
+
+	node->type = AST_IF;
+	node->if_statement = if_stmnt;
+}
+
+
 
 struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 {
@@ -633,10 +703,9 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 		case TOKEN_KEYWORD_RETURN:
 			parse_return(parser, node);
 			return node;
-		case ';':
-		 	node->type = 567;
-		 	parser->current_token++;
-		 	return node;
+		case TOKEN_KEYWORD_IF:
+			parse_if(parser, node);
+			return node;
 		default:
 			parser->current_token++;
 			return node;
@@ -776,6 +845,9 @@ void print_operator_type(enum Operator op)
 		case OP_DIVIDE:
 			printf("divide");
 			break;
+		case OP_EQUALITY:
+			printf("equality");
+			break;
 		default:
 			printf("amongus");
 			break;
@@ -846,6 +918,23 @@ void print_AST_return(struct ASTNode node, u8 num_tabs)
 	print_AST_node(*node.return_expression, 1, num_tabs + 1);
 }
 
+void print_AST_if(struct ASTNode node, u8 num_tabs)
+{
+	//printf("%d", num_tabs);
+	//print_tabs(num_tabs);
+	printf("If statement\n");
+
+	struct ASTIfStatement if_statement = *node.if_statement;
+	//printf("%d", num_tabs);
+	print_tabs(num_tabs + 1);
+	printf("Condition:\n");
+
+	struct ASTNode cond = *if_statement.condition;
+	print_AST_node(cond, 0, num_tabs + 2);
+
+	// print the block here hold up
+}
+
 // TODO redo entire print system to just do the tabs here in a standard way or smthn
 void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
 {
@@ -880,6 +969,9 @@ void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
 			break;	
 		case AST_RETURN:
 			print_AST_return(node, num_tabs);
+			break;
+		case AST_IF:
+			print_AST_if(node, num_tabs);
 			break;
         default:
             printf("Node type: %d\n", node.type);
