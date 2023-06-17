@@ -15,6 +15,9 @@
         "streambuf": "c",
         "tuple": "c",
         "type_traits": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "memory_resource": "c",
+        "shared_mutex": "c",
+        "*.def": "c"
     }
 }

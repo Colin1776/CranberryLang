@@ -11,12 +11,6 @@
 #include "modulizer.c"
 #include "parser.c"
 
-
-int new_func()
-{
-    
-}
-
 int main(int argc, char** argv)
 {
     char* file = NULL;
@@ -26,7 +20,7 @@ int main(int argc, char** argv)
     {
         char* arg = argv[i];
 
-        if (strcmp(arg, "main.cb") == 0)
+        if (strcmp(arg, "main.cbry") == 0)
             file = load_file(arg, &file_size);
     }
 

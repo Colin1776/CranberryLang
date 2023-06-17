@@ -1,0 +1,9 @@
+import sys;
+
+main
+{
+    if (x == 1)
+        sys.println("hi");
+
+    sys.println("standard");
+}

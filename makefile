@@ -2,4 +2,4 @@ compile:
 	gcc src/main.c
 
 run: compile
-	./a.exe main.cb
+	./a.exe main.cbry

@@ -616,8 +616,6 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 
 		next = get_next_token(*parser);
 		prec = get_precedence(*next);
-
-		printf("%d\n", next->type);
 	}
 		
 	return node;
@@ -630,41 +628,38 @@ struct ASTRoot* from_node(struct ASTNode* node)
 	ret->number_of_nodes = 1;
 	ret->nodes = malloc(sizeof(struct ASTNode));
 	ret->nodes[0] = *node;
+	
+	return ret;
 }
 
 void parse_if(struct Parser* parser, struct ASTNode* node)
 {
-	printf("If print #1\n");
 	struct Token token = *get_next_token(*parser);
+
+	if (!parser->func_scope)
+		parser_error(*parser, *node, token, "if statements can't just be randomly stuff place yk");
 
 	if (token.type != '(')
 		parser_error(*parser, *node, token, "parenthesis expected\n");
 
 	parser->current_token += 2;
 
-	printf("If print #1.1\n");
 	struct ASTIfStatement* if_stmnt = malloc(sizeof(struct ASTIfStatement));
 
 	if_stmnt->condition = parse_expression(parser, 0);
-
-	printf("If print #2\n");
-
 	
-	parser->current_token += 1;
+	parser->current_token++;
 	token = parser->token_array[parser->current_token];	
 
 	if (token.type == '{')
 	{
-		printf("if print #2.1\n");
+		parser->current_token++;
 		if_stmnt->block = parse_block(parser);
 	}
 	else
 	{
-		printf("if print #2.2: %d\n", token.type);
 		if_stmnt->block = from_node(parse_statement(parser, 0));
 	}
-
-	printf("If print #3\n");
 
 	token = parser->token_array[parser->current_token];
 
@@ -676,8 +671,6 @@ void parse_if(struct Parser* parser, struct ASTNode* node)
 	node->type = AST_IF;
 	node->if_statement = if_stmnt;
 }
-
-
 
 struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 {
@@ -872,7 +865,6 @@ void print_binary_op(struct ASTNode node, u8 num_tabs)
 	print_tabs(num_tabs + 1);
 	printf("Right: \n");
 	print_AST_node(right, 1, num_tabs + 2);
-
 }
 
 void print_AST_literal(struct ASTNode node)
@@ -920,12 +912,10 @@ void print_AST_return(struct ASTNode node, u8 num_tabs)
 
 void print_AST_if(struct ASTNode node, u8 num_tabs)
 {
-	//printf("%d", num_tabs);
-	//print_tabs(num_tabs);
 	printf("If statement\n");
 
 	struct ASTIfStatement if_statement = *node.if_statement;
-	//printf("%d", num_tabs);
+
 	print_tabs(num_tabs + 1);
 	printf("Condition:\n");
 
@@ -941,8 +931,6 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
 		struct ASTNode node = block.nodes[i];
 		print_AST_node(node, 1, num_tabs + 2);
 	}
-
-	// print the block here hold up
 }
 
 // TODO redo entire print system to just do the tabs here in a standard way or smthn
