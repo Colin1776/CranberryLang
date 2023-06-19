@@ -3,15 +3,15 @@
 
 enum Operator
 {
-    OP_ACCESS,
-	OP_ASSIGN,
+		OP_ACCESS,
+		OP_ASSIGN,
 
-	OP_ADD,
-	OP_SUBTRACT,
-	OP_MULTIPLY,
-	OP_DIVIDE,
+		OP_ADD,
+		OP_SUBTRACT,
+		OP_MULTIPLY,
+		OP_DIVIDE,
 
-	OP_EQUALITY
+		OP_EQUALITY
 };
 
 enum ASTType
@@ -20,13 +20,13 @@ enum ASTType
 
     AST_IMPORT,
     AST_FUNC_DEF,
-	AST_FUNC_CALL,
+    AST_FUNC_CALL,
     AST_VAR_DEF,
-	AST_ARRAY_TYPE,
-	AST_BINARY_OP,
-	AST_LITERAL,
-	AST_RETURN,
-	AST_IF
+    AST_ARRAY_TYPE,
+    AST_BINARY_OP,
+    AST_LITERAL,
+    AST_RETURN,
+    AST_IF
 };
 
 struct ASTNode
@@ -36,13 +36,13 @@ struct ASTNode
     {
         char* string;
         struct ASTFuncDef* func_def;
-		struct ASTFuncCall* func_call;
-		struct ASTVarDef* var_def;
-		struct ASTArrayType* arr_type;
-		struct ASTBinaryOp* binary_op;
-		struct ASTLiteral* literal;
-		struct ASTNode* return_expression;
-		struct ASTIfStatement* if_statement;
+    		struct ASTFuncCall* func_call;
+    		struct ASTVarDef* var_def;
+    		struct ASTArrayType* arr_type;
+    		struct ASTBinaryOp* binary_op;
+    		struct ASTLiteral* literal;
+    		struct ASTNode* return_expression;
+    		struct ASTIfStatement* if_statement;
     };
     
 };
@@ -56,7 +56,7 @@ struct ASTRoot
 
 struct ASTArrayType
 {
-	struct ASTNode* type;
+    struct ASTNode* type;
 };
 
 struct ASTFuncDef
@@ -75,42 +75,42 @@ struct ASTFuncCall
 
 struct ASTVarDef
 {
-	struct ASTNode* type;
-	char* ident;
+    struct ASTNode* type;
+	  char* ident;
 };
 
 struct ASTBinaryOp
 {
-	enum Operator operator;
-	struct ASTNode* left;
-	struct ASTNode* right;
+    enum Operator operator;
+	  struct ASTNode* left;
+	  struct ASTNode* right;
 };
 
 struct ASTIfStatement
 {
-	struct ASTNode* condition;
-	struct ASTRoot* block;
-	struct ASTNode* else_block;
+    struct ASTNode* condition;
+    struct ASTRoot* block;
+    struct ASTNode* else_block;
 };
 
 
 enum LiteralType
 {
-	LITERAL_INT,
-	LITERAL_FLOAT,
-	LITERAL_CHAR,
-	LITERAL_STRING
+    LITERAL_INT,
+    LITERAL_FLOAT,
+    LITERAL_CHAR,
+    LITERAL_STRING
 };
 
 struct ASTLiteral
 {
-	enum LiteralType type;
-	union 
-	{
-		char* string;
-		double floating;
-		u64 integer;
-	};
+    enum LiteralType type;
+    union 
+    {
+        char* string;
+        double floating;
+        u64 integer;
+    };
 };
 
 struct Parser
@@ -118,9 +118,9 @@ struct Parser
     u64 number_of_tokens;
     struct Token* token_array;
     u64 current_token;
-	bool mod_scope;
-	bool class_scope;
-	bool func_scope;
+    bool mod_scope;
+	  bool class_scope;
+	  bool func_scope;
 };
 
 void parser_error(struct Parser, struct ASTNode, struct Token, char* message);
@@ -131,13 +131,13 @@ void print_AST_node(struct ASTNode, u8, u8);
 
 struct Token* get_prev_token(struct Parser parser)
 {
-	if (parser.current_token != 0)
-	{
-		int prev = parser.current_token - 1;
-		return &parser.token_array[prev];
-	}
-	
-	return NULL;
+    if (parser.current_token != 0)
+    {
+        int prev = parser.current_token - 1;
+        return &parser.token_array[prev];
+    }
+
+    return NULL;
 }
 
 struct Token* get_next_token(struct Parser parser)
@@ -663,10 +663,10 @@ void parse_if(struct Parser* parser, struct ASTNode* node)
 
 	token = parser->token_array[parser->current_token];
 
-	// if (token.type == TOKEN_KEYWORD_ELSE)
-	// {
-	// 	if_stmnt->else_block = parse_statement(parser, 0);
-	// }
+    if (token.type == TOKEN_KEYWORD_ELSE)
+    {    
+        if_stmnt->else_block = parse_statement(parser, 0);
+    }
 
 	node->type = AST_IF;
 	node->if_statement = if_stmnt;
@@ -693,18 +693,22 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
         case TOKEN_KEYWORD_MAIN:
             parse_main(parser, node);
             return node;
-		case TOKEN_KEYWORD_RETURN:
-			parse_return(parser, node);
-			return node;
-		case TOKEN_KEYWORD_IF:
-			parse_if(parser, node);
-			return node;
-		default:
-			parser->current_token++;
-			return node;
+    		case TOKEN_KEYWORD_RETURN:
+            parse_return(parser, node);
+            return node;
+		    case TOKEN_KEYWORD_IF:
+			      parse_if(parser, node);
+			      return node;
+        case '{':
+            //parser->current_token++;
+            node = parse_block(parser);
+            return node;
+		    default:
+			      parser->current_token++;
+			      return node;
         // default:
             // printf("Unexpected token\n");
-			// exit(-34);
+			      // exit(-34);
     }
 	
 	struct Token* next = get_next_token(*parser);
@@ -931,6 +935,12 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
 		struct ASTNode node = block.nodes[i];
 		print_AST_node(node, 1, num_tabs + 2);
 	}
+
+	struct ASTNode else_block = *if_statement.else_block;
+
+    print_tabs(num_tabs + 1);
+    printf("Else:\n");
+    print_AST_node(else_block, 1, num_tabs + 2);
 }
 
 // TODO redo entire print system to just do the tabs here in a standard way or smthn

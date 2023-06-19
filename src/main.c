@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     lexer->max_tokens = 100;
     lexer->token_array = malloc(sizeof(struct Token) * lexer->max_tokens);
     lexer->file_data = file;
-	lexer->file_path = "main.cb";
+    lexer->file_path = "main.cb";
     lexer->file_size = file_size;
     lexer->current_character = 0;
     lexer->current_line = 1;

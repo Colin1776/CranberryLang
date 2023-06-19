@@ -2,8 +2,10 @@ import sys;
 
 main
 {
+    int x = sys.prompt("Enter an Integer:");
+            
     if (x == 1)
         sys.println("hi");
-
-    sys.println("standard");
+    else
+        sys.println("bye");
 }
