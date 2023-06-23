@@ -1,5 +1,5 @@
 compile:
-	gcc src/main.c
+	gcc src/main.c -ggdb
 
 run: compile
 	./a.exe main.cbry

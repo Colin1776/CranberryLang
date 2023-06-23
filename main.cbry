@@ -2,10 +2,8 @@ import sys;
 
 main
 {
-    int x = sys.prompt("Enter an Integer:");
-            
-    if (x == 1)
-        sys.println("hi");
-    else
-        sys.println("bye");
+    loop
+        sys.println("Hi guys");
+
+    sys.println("stuff");
 }

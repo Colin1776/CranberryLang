@@ -3,15 +3,15 @@
 
 enum Operator
 {
-		OP_ACCESS,
-		OP_ASSIGN,
+	OP_ACCESS,
+	OP_ASSIGN,
 
-		OP_ADD,
-		OP_SUBTRACT,
-		OP_MULTIPLY,
-		OP_DIVIDE,
+	OP_ADD,
+	OP_SUBTRACT,
+	OP_MULTIPLY,
+	OP_DIVIDE,
 
-		OP_EQUALITY
+	OP_EQUALITY
 };
 
 enum ASTType
@@ -26,7 +26,9 @@ enum ASTType
     AST_BINARY_OP,
     AST_LITERAL,
     AST_RETURN,
-    AST_IF
+    AST_IF,
+	AST_BLOCK,
+	AST_LOOP
 };
 
 struct ASTNode
@@ -36,13 +38,15 @@ struct ASTNode
     {
         char* string;
         struct ASTFuncDef* func_def;
-    		struct ASTFuncCall* func_call;
-    		struct ASTVarDef* var_def;
-    		struct ASTArrayType* arr_type;
-    		struct ASTBinaryOp* binary_op;
-    		struct ASTLiteral* literal;
-    		struct ASTNode* return_expression;
-    		struct ASTIfStatement* if_statement;
+    	struct ASTFuncCall* func_call;
+    	struct ASTVarDef* var_def;
+    	struct ASTArrayType* arr_type;
+    	struct ASTBinaryOp* binary_op;
+    	struct ASTLiteral* literal;
+    	struct ASTNode* return_expression;
+    	struct ASTIfStatement* if_statement;
+		struct ASTRoot* block;
+		struct ASTLoop* loop;
     };
     
 };
@@ -82,8 +86,8 @@ struct ASTVarDef
 struct ASTBinaryOp
 {
     enum Operator operator;
-	  struct ASTNode* left;
-	  struct ASTNode* right;
+	struct ASTNode* left;
+	struct ASTNode* right;
 };
 
 struct ASTIfStatement
@@ -113,14 +117,19 @@ struct ASTLiteral
     };
 };
 
+struct ASTLoop
+{
+	struct ASTNode* block;
+};
+
 struct Parser
 {
     u64 number_of_tokens;
     struct Token* token_array;
     u64 current_token;
     bool mod_scope;
-	  bool class_scope;
-	  bool func_scope;
+	bool class_scope;
+	bool func_scope;
 };
 
 void parser_error(struct Parser, struct ASTNode, struct Token, char* message);
@@ -664,12 +673,42 @@ void parse_if(struct Parser* parser, struct ASTNode* node)
 	token = parser->token_array[parser->current_token];
 
     if (token.type == TOKEN_KEYWORD_ELSE)
-    {    
+    {   
+		parser->current_token++;
         if_stmnt->else_block = parse_statement(parser, 0);
     }
 
 	node->type = AST_IF;
 	node->if_statement = if_stmnt;
+}
+
+void parse_loop(struct Parser* parser, struct ASTNode* node)
+{
+	struct Token next = *get_next_token(*parser);
+
+	// if (next.type != '{')
+	// 	parser_error(*parser, *node, next, "Expected a block after loop keyword\n");
+
+	struct ASTLoop* loop = malloc(sizeof(struct ASTLoop));
+	struct ASTNode* block = malloc(sizeof(struct ASTNode));
+
+	if (next.type == '{')
+	{
+		parser->current_token += 2;
+		block->type = AST_BLOCK;
+	
+		block->block = parse_block(parser);
+	}
+	else
+	{
+		parser->current_token++;
+		block = parse_statement(parser, 0);
+	}
+
+	loop->block = block;
+	
+	node->type = AST_LOOP;
+	node->loop = loop;
 }
 
 struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
@@ -693,19 +732,22 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
         case TOKEN_KEYWORD_MAIN:
             parse_main(parser, node);
             return node;
-    		case TOKEN_KEYWORD_RETURN:
+    	case TOKEN_KEYWORD_RETURN:
             parse_return(parser, node);
             return node;
-		    case TOKEN_KEYWORD_IF:
-			      parse_if(parser, node);
-			      return node;
+		case TOKEN_KEYWORD_IF:
+			parse_if(parser, node);
+			return node;
         case '{':
-            //parser->current_token++;
-            node = parse_block(parser);
+            parser->current_token++;
+			node->type = AST_BLOCK;
+            node->block = parse_block(parser);
             return node;
-		    default:
-			      parser->current_token++;
-			      return node;
+		case TOKEN_KEYWORD_LOOP:
+			parse_loop(parser, node);
+			return node;
+		default:
+	    	parser_error(*parser, *node, token, "you're stupid lmao this token isn't supposed to be here goofy ahh");
         // default:
             // printf("Unexpected token\n");
 			      // exit(-34);
@@ -936,11 +978,52 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
 		print_AST_node(node, 1, num_tabs + 2);
 	}
 
+	if (if_statement.else_block == NULL)
+		return;
+
 	struct ASTNode else_block = *if_statement.else_block;
 
     print_tabs(num_tabs + 1);
     printf("Else:\n");
-    print_AST_node(else_block, 1, num_tabs + 2);
+
+	if (else_block.type == AST_BLOCK)
+	{
+		struct ASTRoot among = *else_block.block;
+
+		for (u64 i = 0; i < among.number_of_nodes; i++)
+		{
+			struct ASTNode jorts = among.nodes[i];
+			print_AST_node(jorts, 1, num_tabs + 2);
+		}
+	}
+	else
+	{
+		print_AST_node(else_block, 1, num_tabs + 2);
+	}
+    
+}
+
+void print_AST_block(struct ASTNode node, u8 num_tabs)
+{
+	//print_tabs(num_tabs);
+	printf("Block:\n");
+
+	struct ASTRoot block = *node.block;
+
+	for (u64 i = 0; i < block.number_of_nodes; i++)
+	{
+		struct ASTNode node = block.nodes[i];
+		print_AST_node(node, 1, num_tabs + 1);
+	}
+}
+
+void print_AST_loop(struct ASTNode node, u8 num_tabs)
+{
+	struct ASTLoop loop = *node.loop;
+	printf("Loop:\n");
+	
+	struct ASTNode block = *loop.block;
+	print_AST_node(block, 0, num_tabs + 1);
 }
 
 // TODO redo entire print system to just do the tabs here in a standard way or smthn
@@ -980,6 +1063,12 @@ void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
 			break;
 		case AST_IF:
 			print_AST_if(node, num_tabs);
+			break;
+		case AST_BLOCK:
+			print_AST_block(node, num_tabs);
+			break;
+		case AST_LOOP:
+			print_AST_loop(node, num_tabs);
 			break;
         default:
             printf("Node type: %d\n", node.type);
