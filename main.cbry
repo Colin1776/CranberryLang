@@ -2,8 +2,16 @@ import sys;
 
 main
 {
-    loop
-        sys.println("Hi guys");
+    int x = 0;
 
-    sys.println("stuff");
+    loop
+    {
+        x += 1;
+
+        if (x == 10)
+        {
+            sys.println("Bye guys");
+            sys.exit(0);
+        }
+    }
 }

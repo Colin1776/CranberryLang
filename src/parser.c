@@ -6,6 +6,11 @@ enum Operator
 	OP_ACCESS,
 	OP_ASSIGN,
 
+	OP_ADD_ASSIGN,
+	OP_SUBTRACT_ASSIGN,
+	OP_MULTIPLY_ASSIGN,
+	OP_DIVIDE_ASSIGN,
+
 	OP_ADD,
 	OP_SUBTRACT,
 	OP_MULTIPLY,
@@ -174,6 +179,11 @@ u32 get_precedence(struct Token token)
 		case ',':
 			return 0;
 		case TOKEN_EQUALITY:
+		case '=':
+		case TOKEN_ADD_ASSIGN:
+		case TOKEN_SUBTRACT_ASSIGN:
+		case TOKEN_MULTIPLY_ASSIGN:
+		case TOKEN_DIVIDE_ASSIGN:
 			return 1;
 		case '+':
 		case '-':
@@ -621,6 +631,26 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 				parser->current_token += 2;
 				node = operator(OP_EQUALITY, node, parse_expression(parser, prec + 1));
 				break;
+			case '=':
+				parser->current_token += 2;
+				node = operator(OP_ASSIGN, node, parse_expression(parser, prec + 1));
+				break;
+			case TOKEN_ADD_ASSIGN:
+				parser->current_token += 2;
+				node = operator(OP_ADD_ASSIGN, node, parse_expression(parser, prec + 1));
+				break;
+			case TOKEN_SUBTRACT_ASSIGN:
+				parser->current_token += 2;
+				node = operator(OP_SUBTRACT_ASSIGN, node, parse_expression(parser, prec + 1));
+				break;
+			case TOKEN_MULTIPLY_ASSIGN:
+				parser->current_token += 2;
+				node = operator(OP_MULTIPLY_ASSIGN, node, parse_expression(parser, prec + 1));
+				break;
+			case TOKEN_DIVIDE_ASSIGN:
+				parser->current_token += 2;
+				node = operator(OP_DIVIDE_ASSIGN, node, parse_expression(parser, prec + 1));
+				break;
 		}
 
 		next = get_next_token(*parser);
@@ -767,6 +797,10 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 	{
 		node = parse_expression(parser, 0);	
 	}
+	else if (next->type == '=' || next->type == TOKEN_ADD_ASSIGN || next->type == TOKEN_SUBTRACT_ASSIGN || next->type == TOKEN_MULTIPLY_ASSIGN || next->type == TOKEN_DIVIDE_ASSIGN)
+	{
+		node = parse_expression(parser, 0);
+	}
 	
 	
 
@@ -886,6 +920,18 @@ void print_operator_type(enum Operator op)
 			break;
 		case OP_EQUALITY:
 			printf("equality");
+			break;
+		case OP_ADD_ASSIGN:
+			printf("add-assign");
+			break;
+		case OP_SUBTRACT_ASSIGN:
+			printf("subtract-assign");
+			break;
+		case OP_MULTIPLY_ASSIGN:
+			printf("multiply-assign");
+			break;
+		case OP_DIVIDE_ASSIGN:
+			printf("divide-assign");
 			break;
 		default:
 			printf("amongus");
