@@ -356,12 +356,14 @@ void handle_string(struct Token* token, struct Lexer* lexer)
     }
 
     int string_size = token->char_end - token->char_start;
-    char* string = malloc(string_size);
+    char* string = malloc(string_size + 1);
 
     for (int i = 0; i < string_size; i++)
     {
         string[i] = lexer->file_data[token->char_start + i];
     }
+
+    string[string_size] = '\0';
 
     token->type = TOKEN_LITERAL_STRING;
     token->string = string;

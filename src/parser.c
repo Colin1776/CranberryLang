@@ -3,20 +3,38 @@
 
 enum Operator
 {
-	OP_ACCESS,
-	OP_ASSIGN,
+    OP_ACCESS,
+    OP_ASSIGN,
 
-	OP_ADD_ASSIGN,
-	OP_SUBTRACT_ASSIGN,
-	OP_MULTIPLY_ASSIGN,
-	OP_DIVIDE_ASSIGN,
+    OP_ADD_ASSIGN,
+    OP_SUBTRACT_ASSIGN,
+    OP_MULTIPLY_ASSIGN,
+    OP_DIVIDE_ASSIGN,
+	OP_MODULO_ASSIGN,
 
-	OP_ADD,
-	OP_SUBTRACT,
-	OP_MULTIPLY,
-	OP_DIVIDE,
+	OP_INCREMENT,
+	OP_DECREMENT,
 
-	OP_EQUALITY
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+	OP_MODULO,
+	
+    OP_EQUALITY,
+	OP_INEQUALITY,
+    OP_GREATER_EQUALS,
+    OP_LESS_EQUALS,
+	OP_GREATER_THAN,
+	OP_LESS_THAN,
+
+	OP_LOGICAL_AND,
+	OP_LOGICAL_OR,
+	OP_LOGICAL_NOT,
+
+	OP_ADDRESS,
+	OP_POINTER,
+	OP_DEREF
 };
 
 enum ASTType
@@ -29,11 +47,12 @@ enum ASTType
     AST_VAR_DEF,
     AST_ARRAY_TYPE,
     AST_BINARY_OP,
+	AST_UNARY_OP,
     AST_LITERAL,
     AST_RETURN,
     AST_IF,
-	AST_BLOCK,
-	AST_LOOP
+    AST_BLOCK,
+    AST_LOOP
 };
 
 struct ASTNode
@@ -47,6 +66,7 @@ struct ASTNode
     	struct ASTVarDef* var_def;
     	struct ASTArrayType* arr_type;
     	struct ASTBinaryOp* binary_op;
+		struct ASTUnaryOp* unary_op;
     	struct ASTLiteral* literal;
     	struct ASTNode* return_expression;
     	struct ASTIfStatement* if_statement;
@@ -95,6 +115,12 @@ struct ASTBinaryOp
 	struct ASTNode* right;
 };
 
+struct ASTUnaryOp
+{
+	enum Operator operator;
+	struct ASTNode* operand;
+};
+
 struct ASTIfStatement
 {
     struct ASTNode* condition;
@@ -124,7 +150,8 @@ struct ASTLiteral
 
 struct ASTLoop
 {
-	struct ASTNode* block;
+    struct ASTNode* block;
+    struct ASTNode* condition;
 };
 
 struct Parser
@@ -178,23 +205,36 @@ u32 get_precedence(struct Token token)
 		case ')':
 		case ',':
 			return 0;
-		case TOKEN_EQUALITY:
 		case '=':
 		case TOKEN_ADD_ASSIGN:
 		case TOKEN_SUBTRACT_ASSIGN:
 		case TOKEN_MULTIPLY_ASSIGN:
 		case TOKEN_DIVIDE_ASSIGN:
 			return 1;
+		case TOKEN_LOGICAL_AND:
+		case TOKEN_LOGICAL_OR:
+			return 3;
+		case TOKEN_EQUALITY:
+		case TOKEN_INEQUALITY:
+			return 9;
+		case TOKEN_GREATER_EQUALS:
+		case TOKEN_LESS_EQUALS:
+		case '<':
+		case '>':
+			return 10;
 		case '+':
 		case '-':
-			return 2;
+			return 12;
 		case '*':
 		case '/':
-			return 3;
+			return 13;
+		case TOKEN_INCREMENT:
+		case TOKEN_DECREMENT:
+			return 14;
 		case '.':
-			return 4;
+			return 15;
 		default:
-			printf("Error: unknown precedence for token of type: %c on line: %d\n", token.type, token.line);
+			printf("Error: unknown precedence for token of type: %d on line: %d\n", token.type, token.line);
 			exit(-1);
 	}
 }
@@ -365,6 +405,18 @@ struct ASTNode* operator(enum Operator op, struct ASTNode* left, struct ASTNode*
 	struct ASTNode* node = malloc(sizeof(struct ASTNode));
 	node->type = AST_BINARY_OP;
 	node->binary_op = bin_op;
+	return node;
+}
+
+struct ASTNode* un_operator(enum Operator op, struct ASTNode* operand)
+{
+	struct ASTUnaryOp* un_op = malloc(sizeof(struct ASTUnaryOp));
+	un_op->operator = op;
+	un_op->operand = operand;
+
+	struct ASTNode* node = malloc(sizeof(struct ASTNode));
+	node->type = AST_UNARY_OP;
+	node->unary_op = un_op;
 	return node;
 }
 
@@ -545,6 +597,7 @@ void parse_return(struct Parser* parser, struct ASTNode* node)
 */
 struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 {
+    
 	struct ASTNode* node = malloc(sizeof(struct ASTNode));
 	node->type = -1;
 	
@@ -565,6 +618,7 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 				node->type = AST_FUNC_CALL;
 				node->func_call = func_call;
 			}
+
 			break;
 
 		case TOKEN_LITERAL_INTEGER:
@@ -591,71 +645,92 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 
 	u64 prec = get_precedence(*next);
 
-	if (prec < precedence)
-		return node;
+    if (prec < precedence)
+        return node;
 
-	while (prec >= precedence)
-	{
-		switch (next->type)
-		{
-			case ')':
+    while (prec >= precedence)
+    {
+    
+        switch (next->type)
+        {
+            case ')':
+    		    parser->current_token += 1;
+    		    return node;
+        	  case ',':
+    		    parser->current_token += 2;
+    		    return node;
+            case ';':
+    		    parser->current_token += 2;
+    		    return node;
+            case '+':
+                parser->current_token += 2;
+                node = operator(OP_ADD, node, parse_expression(parser, prec + 1));
+                break;
+            case '-':
+                parser->current_token += 2;
+                node = operator(OP_SUBTRACT, node, parse_expression(parser, prec + 1));
+                break;
+            case '*':
+                parser->current_token += 2;
+                node = operator(OP_MULTIPLY, node, parse_expression(parser, prec + 1));
+                break;
+            case '/':
+                parser->current_token += 2;
+                node = operator(OP_DIVIDE, node, parse_expression(parser, prec + 1));
+                break;
+            case '.':
+                parser->current_token += 2;
+                node = operator(OP_ACCESS, node, parse_expression(parser, prec + 1));
+                break;
+            case TOKEN_EQUALITY:
+                parser->current_token += 2;
+                node = operator(OP_EQUALITY, node, parse_expression(parser, prec + 1));
+                break;
+            case TOKEN_GREATER_EQUALS:
+                parser->current_token += 2;
+                node = operator(OP_GREATER_EQUALS, node, parse_expression(parser, prec + 1));            
+                break;
+            case TOKEN_LESS_EQUALS:
+                parser->current_token += 2;
+                node = operator(OP_LESS_EQUALS, node, parse_expression(parser, prec + 1));
+                break;
+			case '<':
+				parser->current_token += 2;
+				node = operator(OP_LESS_THAN, node, parse_expression(parser, prec + 1));
+				break;
+			case '>':
+				parser->current_token += 2;
+				node = operator(OP_GREATER_THAN, node, parse_expression(parser, prec + 1));
+				break;
+            case '=':
+                parser->current_token += 2;
+                node = operator(OP_ASSIGN, node, parse_expression(parser, prec + 1));
+                break;
+            case TOKEN_ADD_ASSIGN:
+                parser->current_token += 2;
+                node = operator(OP_ADD_ASSIGN, node, parse_expression(parser, prec + 1));
+                break;
+            case TOKEN_SUBTRACT_ASSIGN:
+                parser->current_token += 2;
+                node = operator(OP_SUBTRACT_ASSIGN, node, parse_expression(parser, prec + 1));
+                break;
+            case TOKEN_MULTIPLY_ASSIGN:
+                parser->current_token += 2;
+                node = operator(OP_MULTIPLY_ASSIGN, node, parse_expression(parser, prec + 1));
+                break;
+            case TOKEN_DIVIDE_ASSIGN:
+                parser->current_token += 2;
+                node = operator(OP_DIVIDE_ASSIGN, node, parse_expression(parser, prec + 1));
+                break;
+			case TOKEN_INCREMENT:
 				parser->current_token += 1;
-				return node;
-			case ',':
-				parser->current_token += 2;
-				return node;
-			case ';':
-				parser->current_token += 2;
-				return node;
-			case '+':
-				parser->current_token += 2;
-				node = operator(OP_ADD, node, parse_expression(parser, prec + 1));
+				node = un_operator(OP_INCREMENT, node);
 				break;
-			case '-':
-				parser->current_token += 2;
-				node = operator(OP_SUBTRACT, node, parse_expression(parser, prec + 1));
-				break;
-			case '*':
-				parser->current_token += 2;
-				node = operator(OP_MULTIPLY, node, parse_expression(parser, prec + 1));
-				break;
-			case '/':
-				parser->current_token += 2;
-				node = operator(OP_DIVIDE, node, parse_expression(parser, prec + 1));
-				break;
-			case '.':
-				parser->current_token += 2;
-				node = operator(OP_ACCESS, node, parse_expression(parser, prec + 1));
-				break;
-			case TOKEN_EQUALITY:
-				parser->current_token += 2;
-				node = operator(OP_EQUALITY, node, parse_expression(parser, prec + 1));
-				break;
-			case '=':
-				parser->current_token += 2;
-				node = operator(OP_ASSIGN, node, parse_expression(parser, prec + 1));
-				break;
-			case TOKEN_ADD_ASSIGN:
-				parser->current_token += 2;
-				node = operator(OP_ADD_ASSIGN, node, parse_expression(parser, prec + 1));
-				break;
-			case TOKEN_SUBTRACT_ASSIGN:
-				parser->current_token += 2;
-				node = operator(OP_SUBTRACT_ASSIGN, node, parse_expression(parser, prec + 1));
-				break;
-			case TOKEN_MULTIPLY_ASSIGN:
-				parser->current_token += 2;
-				node = operator(OP_MULTIPLY_ASSIGN, node, parse_expression(parser, prec + 1));
-				break;
-			case TOKEN_DIVIDE_ASSIGN:
-				parser->current_token += 2;
-				node = operator(OP_DIVIDE_ASSIGN, node, parse_expression(parser, prec + 1));
-				break;
-		}
+	    }
 
-		next = get_next_token(*parser);
-		prec = get_precedence(*next);
-	}
+        next = get_next_token(*parser);
+        prec = get_precedence(*next);
+    }
 		
 	return node;
 }
@@ -714,36 +789,42 @@ void parse_if(struct Parser* parser, struct ASTNode* node)
 
 void parse_loop(struct Parser* parser, struct ASTNode* node)
 {
-	struct Token next = *get_next_token(*parser);
+    struct Token next = *get_next_token(*parser);
 
-	// if (next.type != '{')
-	// 	parser_error(*parser, *node, next, "Expected a block after loop keyword\n");
+    // if (next.type != '{')
+    // 	parser_error(*parser, *node, next, "Expected a block after loop keyword\n");
 
-	struct ASTLoop* loop = malloc(sizeof(struct ASTLoop));
-	struct ASTNode* block = malloc(sizeof(struct ASTNode));
+	  struct ASTLoop* loop = malloc(sizeof(struct ASTLoop));
+    struct ASTNode* block = malloc(sizeof(struct ASTNode));
 
-	if (next.type == '{')
-	{
-		parser->current_token += 2;
-		block->type = AST_BLOCK;
+    if (next.type == '(')
+    {
+        parser->current_token += 2;
+        loop->condition = parse_expression(parser, 0);
+    }
+
+    next = *get_next_token(*parser);
+
+    if (next.type == '{')
+    {
+	    parser->current_token += 2;
+	    block->type = AST_BLOCK;
+        block->block = parse_block(parser);
+    }
+    else
+    {
+	    parser->current_token++;
+	    block = parse_statement(parser, 0);
+    }
+
+    loop->block = block;
 	
-		block->block = parse_block(parser);
-	}
-	else
-	{
-		parser->current_token++;
-		block = parse_statement(parser, 0);
-	}
-
-	loop->block = block;
-	
-	node->type = AST_LOOP;
-	node->loop = loop;
+    node->type = AST_LOOP;
+    node->loop = loop;
 }
 
 struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 {
-	//printf("%d / %d \n", parser->current_token, parser->number_of_tokens);
     struct ASTNode* node = malloc(sizeof(struct ASTNode));
     node->type = -1;
 
@@ -778,9 +859,6 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 			return node;
 		default:
 	    	parser_error(*parser, *node, token, "you're stupid lmao this token isn't supposed to be here goofy ahh");
-        // default:
-            // printf("Unexpected token\n");
-			      // exit(-34);
     }
 	
 	struct Token* next = get_next_token(*parser);
@@ -802,8 +880,6 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 		node = parse_expression(parser, 0);
 	}
 	
-	
-
     return node;
 }
 
@@ -898,45 +974,63 @@ void print_AST_array_type(struct ASTNode node, u8 num_tabs)
 
 void print_operator_type(enum Operator op)
 {
-	switch (op)
-	{
-		case OP_ACCESS:
+    switch (op)
+    {
+	    case OP_ACCESS:
 			printf("access");
-			break;
-		case OP_ASSIGN:
+	      	break;
+	    case OP_ASSIGN:
 			printf("assign");
-			break;
+			break;    
 		case OP_ADD:
-			printf("add");
+            printf("add");
+            break;
+        case OP_SUBTRACT:
+            printf("subtract");
+            break;
+        case OP_MULTIPLY:
+            printf("multiply");
+            break;
+        case OP_DIVIDE:
+            printf("divide");
+            break;
+        case OP_EQUALITY:
+            printf("equality");
+            break;
+        case OP_GREATER_EQUALS:
+            printf("greater-than-equality");
+            break;
+        case OP_LESS_EQUALS:
+            printf("less-than-equals");
+            break;
+		case OP_GREATER_THAN:
+			printf("greater-than");
 			break;
-		case OP_SUBTRACT:
-			printf("subtract");
+		case OP_LESS_THAN:
+			printf("less-than");
 			break;
-		case OP_MULTIPLY:
-			printf("multiply");
+        case OP_ADD_ASSIGN:
+            printf("add-assign");
+            break;
+        case OP_SUBTRACT_ASSIGN:
+            printf("subtract-assign");
+            break;            
+        case OP_MULTIPLY_ASSIGN:
+            printf("multiply-assign");
+            break;
+        case OP_DIVIDE_ASSIGN:
+            printf("divide-assign");
+            break;
+		case OP_INCREMENT:
+			printf("increment");
 			break;
-		case OP_DIVIDE:
-			printf("divide");
+		case OP_DECREMENT:
+			printf("decrement");
 			break;
-		case OP_EQUALITY:
-			printf("equality");
-			break;
-		case OP_ADD_ASSIGN:
-			printf("add-assign");
-			break;
-		case OP_SUBTRACT_ASSIGN:
-			printf("subtract-assign");
-			break;
-		case OP_MULTIPLY_ASSIGN:
-			printf("multiply-assign");
-			break;
-		case OP_DIVIDE_ASSIGN:
-			printf("divide-assign");
-			break;
-		default:
-			printf("amongus");
-			break;
-	}
+        default:
+            printf("amongus");
+            break;            
+    }
 }
 
 void print_binary_op(struct ASTNode node, u8 num_tabs)
@@ -957,6 +1051,21 @@ void print_binary_op(struct ASTNode node, u8 num_tabs)
 	print_tabs(num_tabs + 1);
 	printf("Right: \n");
 	print_AST_node(right, 1, num_tabs + 2);
+}
+
+void print_unary_op(struct ASTNode node, u8 num_tabs)
+{
+	struct ASTUnaryOp un_op = *node.unary_op;
+	printf("Unary Operator\n");
+	print_tabs(num_tabs + 1);
+	printf("Operator: ");
+	print_operator_type(un_op.operator);
+	printf("\n");
+
+	struct ASTNode operand = *un_op.operand;
+	print_tabs(num_tabs + 1);
+	printf("Operand:\n");
+	print_AST_node(operand, 1, num_tabs + 2);
 }
 
 void print_AST_literal(struct ASTNode node)
@@ -992,7 +1101,7 @@ void print_AST_func_call(struct ASTNode node, u8 num_tabs)
 	for (u64 i = 0; i < num_args; i++)
 	{
 		struct ASTNode node = args.nodes[i];
-		print_AST_node(node, 0, num_tabs + 2);
+		print_AST_node(node, 1, num_tabs + 2);
 	}
 }
 
@@ -1067,6 +1176,14 @@ void print_AST_loop(struct ASTNode node, u8 num_tabs)
 {
 	struct ASTLoop loop = *node.loop;
 	printf("Loop:\n");
+
+    if (loop.condition)
+    {
+        print_tabs(num_tabs + 1);
+        printf("Condition:\n");
+        struct ASTNode condition = *loop.condition;
+        print_AST_node(condition, 0, num_tabs + 2);
+    }
 	
 	struct ASTNode block = *loop.block;
 	print_AST_node(block, 0, num_tabs + 1);
@@ -1100,6 +1217,9 @@ void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
 			break;
 		case AST_BINARY_OP:
 			print_binary_op(node, num_tabs);
+			break;
+		case AST_UNARY_OP:
+			print_unary_op(node, num_tabs);
 			break;
 		case AST_LITERAL:
 			print_AST_literal(node);

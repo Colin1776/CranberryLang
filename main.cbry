@@ -2,16 +2,5 @@ import sys;
 
 main
 {
-    int x = 0;
-
-    loop
-    {
-        x += 1;
-
-        if (x == 10)
-        {
-            sys.println("Bye guys");
-            sys.exit(0);
-        }
-    }
+    sys.println("Hello World");
 }

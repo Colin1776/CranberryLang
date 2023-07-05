@@ -11,6 +11,16 @@
 #include "modulizer.c"
 #include "parser.c"
 
+int is_source_file(char* arg)
+{
+    int i = 0;
+
+    while(arg[i] != '\0')
+    {
+        i++;
+    }
+}
+
 int main(int argc, char** argv)
 {
     char* file = NULL;
@@ -22,6 +32,8 @@ int main(int argc, char** argv)
 
         if (strcmp(arg, "main.cbry") == 0)
             file = load_file(arg, &file_size);
+    
+        is_source_file(arg);
     }
 
     if (file == 0)
@@ -52,7 +64,7 @@ int main(int argc, char** argv)
     parser->number_of_tokens = lexer->number_of_tokens;
     parser->token_array = lexer->token_array;
     parser->current_token = 0;
-	parser->mod_scope = true;
+    parser->mod_scope = true;
 
     start_timer();
 
