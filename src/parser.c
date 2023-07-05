@@ -875,7 +875,8 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 	{
 		node = parse_expression(parser, 0);	
 	}
-	else if (next->type == '=' || next->type == TOKEN_ADD_ASSIGN || next->type == TOKEN_SUBTRACT_ASSIGN || next->type == TOKEN_MULTIPLY_ASSIGN || next->type == TOKEN_DIVIDE_ASSIGN)
+	else if (next->type == '=' || next->type == TOKEN_ADD_ASSIGN || next->type == TOKEN_SUBTRACT_ASSIGN || next->type == TOKEN_MULTIPLY_ASSIGN || next->type == TOKEN_DIVIDE_ASSIGN ||
+			 next->type == TOKEN_INCREMENT || next->type == TOKEN_DECREMENT)
 	{
 		node = parse_expression(parser, 0);
 	}
