@@ -14,12 +14,13 @@ enum TokenType
     TOKEN_KEYWORD_ELSE,
     TOKEN_KEYWORD_IF,
     TOKEN_KEYWORD_IMPORT,
-    TOKEN_KEYWORD_INTERFACE,
+    TOKEN_KEYWORD_IN,
     TOKEN_KEYWORD_LONG,
     TOKEN_KEYWORD_LOOP,
     TOKEN_KEYWORD_MAIN,
     TOKEN_KEYWORD_NEW,
     TOKEN_KEYWORD_RETURN,
+    TOKEN_KEYWORD_STRUCT,
     TOKEN_KEYWORD_SWITCH,
     TOKEN_KEYWORD_VOID,
     
@@ -619,6 +620,8 @@ int get_keyword(char* string, int len)
         case 2:
             if (!memcmp(string, "if", 2)) 
                 return TOKEN_KEYWORD_IF;
+            if (!memcmp(string, "in", 2))
+                return TOKEN_KEYWORD_IN;
             break;
             
         case 3:
@@ -657,16 +660,13 @@ int get_keyword(char* string, int len)
                 return TOKEN_KEYWORD_RETURN;
             if (!memcmp(string, "switch", 6))
                 return TOKEN_KEYWORD_SWITCH;
+            if (!memcmp(string, "struct", 6))
+                return TOKEN_KEYWORD_STRUCT;
             break;
         
         case 7:
             if (!memcmp(string, "default", 7))
                 return TOKEN_KEYWORD_DEFAULT;
-            break;
-
-        case 9:
-            if (!memcmp(string, "interface", 9))
-                return TOKEN_KEYWORD_INTERFACE;
             break;
     }
 
@@ -742,9 +742,6 @@ void print_token(struct Token token)
         case TOKEN_KEYWORD_IMPORT:
             printf("Keyword: import\n");
             break;
-        case TOKEN_KEYWORD_INTERFACE:
-            printf("Keyword: interface\n");
-            break;
         case TOKEN_KEYWORD_LONG:
             printf("Keyword: long\n");
             break;
@@ -759,6 +756,9 @@ void print_token(struct Token token)
             break;
         case TOKEN_KEYWORD_RETURN:
             printf("Keyword: return\n");
+            break;
+        case TOKEN_KEYWORD_STRUCT:
+            printf("Keyword: struct\n");
             break;
         case TOKEN_KEYWORD_SWITCH:
             printf("Keyword: swtich\n");

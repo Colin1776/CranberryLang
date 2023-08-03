@@ -212,6 +212,7 @@ u32 get_precedence(struct Token token)
 		case TOKEN_DIVIDE_ASSIGN:
 			return 1;
 		case TOKEN_LOGICAL_AND:
+			return 2;
 		case TOKEN_LOGICAL_OR:
 			return 3;
 		case TOKEN_EQUALITY:
@@ -230,6 +231,7 @@ u32 get_precedence(struct Token token)
 			return 13;
 		case TOKEN_INCREMENT:
 		case TOKEN_DECREMENT:
+		case '!':
 			return 14;
 		case '.':
 			return 15;
@@ -726,6 +728,10 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 				parser->current_token += 1;
 				node = un_operator(OP_INCREMENT, node);
 				break;
+			case TOKEN_DECREMENT:
+				parser->current_token += 1;
+				node = un_operator(OP_DECREMENT, node);
+				break;
 	    }
 
         next = get_next_token(*parser);
@@ -823,6 +829,23 @@ void parse_loop(struct Parser* parser, struct ASTNode* node)
     node->loop = loop;
 }
 
+void parse_struct_definition(struct Parser* parser, struct ASTNode* node)
+{
+	struct Token next = *get_next_token(*parser);
+
+	if (next.type != TOKEN_IDENTIFIER)
+	{
+		// do the funny error thingy
+	}
+
+	// logic:
+	// make sure next token is an identifier, because struct defs need an identifier
+	// make sure there is bracket after identifier
+	// oh yeah unless the struct is of a class, check that by checking for a ':' token right after identifier
+	// parse every line as part of struct definition until closing bracket
+	// i think I'll just parse everything inside the struct def as normal statements, and then throw out weird expressions inside the typechecker
+}
+
 struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 {
     struct ASTNode* node = malloc(sizeof(struct ASTNode));
@@ -857,6 +880,8 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 		case TOKEN_KEYWORD_LOOP:
 			parse_loop(parser, node);
 			return node;
+		case TOKEN_KEYWORD_STRUCT:
+			
 		default:
 	    	parser_error(*parser, *node, token, "you're stupid lmao this token isn't supposed to be here goofy ahh");
     }
@@ -876,7 +901,7 @@ struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
 		node = parse_expression(parser, 0);	
 	}
 	else if (next->type == '=' || next->type == TOKEN_ADD_ASSIGN || next->type == TOKEN_SUBTRACT_ASSIGN || next->type == TOKEN_MULTIPLY_ASSIGN || next->type == TOKEN_DIVIDE_ASSIGN ||
-			 next->type == TOKEN_INCREMENT || next->type == TOKEN_DECREMENT)
+			 next->type == TOKEN_INCREMENT || next->type == TOKEN_DECREMENT || next->type == '(')
 	{
 		node = parse_expression(parser, 0);
 	}
