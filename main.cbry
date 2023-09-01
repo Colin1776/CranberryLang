@@ -2,5 +2,7 @@ import sys;
 
 main
 {
+    sys.fort(4);
+    sys.among('a');
     sys.println("Hello World");
 }

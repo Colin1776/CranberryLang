@@ -1,174 +1,8 @@
-#include "types.c"
-#include "lexer.c"
+#include "include/parser.h"
+#include "include/lexer.h"
 
-enum Operator
-{
-    OP_ACCESS,
-    OP_ASSIGN,
-
-    OP_ADD_ASSIGN,
-    OP_SUBTRACT_ASSIGN,
-    OP_MULTIPLY_ASSIGN,
-    OP_DIVIDE_ASSIGN,
-	OP_MODULO_ASSIGN,
-
-	OP_INCREMENT,
-	OP_DECREMENT,
-
-    OP_ADD,
-    OP_SUBTRACT,
-    OP_MULTIPLY,
-    OP_DIVIDE,
-	OP_MODULO,
-	
-    OP_EQUALITY,
-	OP_INEQUALITY,
-    OP_GREATER_EQUALS,
-    OP_LESS_EQUALS,
-	OP_GREATER_THAN,
-	OP_LESS_THAN,
-
-	OP_LOGICAL_AND,
-	OP_LOGICAL_OR,
-	OP_LOGICAL_NOT,
-
-	OP_ADDRESS,
-	OP_POINTER,
-	OP_DEREF
-};
-
-enum ASTType
-{
-    AST_IDENTIIFER,
-
-    AST_IMPORT,
-    AST_FUNC_DEF,
-    AST_FUNC_CALL,
-    AST_VAR_DEF,
-    AST_ARRAY_TYPE,
-    AST_BINARY_OP,
-	AST_UNARY_OP,
-    AST_LITERAL,
-    AST_RETURN,
-    AST_IF,
-    AST_BLOCK,
-    AST_LOOP
-};
-
-struct ASTNode
-{
-    enum ASTType type;
-    union
-    {
-        char* string;
-        struct ASTFuncDef* func_def;
-    	struct ASTFuncCall* func_call;
-    	struct ASTVarDef* var_def;
-    	struct ASTArrayType* arr_type;
-    	struct ASTBinaryOp* binary_op;
-		struct ASTUnaryOp* unary_op;
-    	struct ASTLiteral* literal;
-    	struct ASTNode* return_expression;
-    	struct ASTIfStatement* if_statement;
-		struct ASTRoot* block;
-		struct ASTLoop* loop;
-    };
-    
-};
-
-struct ASTRoot
-{
-    u64 number_of_nodes;
-    u64 max_nodes;
-    struct ASTNode* nodes;
-};
-
-struct ASTArrayType
-{
-    struct ASTNode* type;
-};
-
-struct ASTFuncDef
-{
-    struct ASTNode* return_type;
-    char* func_name;
-    struct ASTRoot* args;
-    struct ASTRoot* block;
-};
-
-struct ASTFuncCall
-{
-    char* func_name;
-    struct ASTRoot* args;
-};
-
-struct ASTVarDef
-{
-    struct ASTNode* type;
-	  char* ident;
-};
-
-struct ASTBinaryOp
-{
-    enum Operator operator;
-	struct ASTNode* left;
-	struct ASTNode* right;
-};
-
-struct ASTUnaryOp
-{
-	enum Operator operator;
-	struct ASTNode* operand;
-};
-
-struct ASTIfStatement
-{
-    struct ASTNode* condition;
-    struct ASTRoot* block;
-    struct ASTNode* else_block;
-};
-
-
-enum LiteralType
-{
-    LITERAL_INT,
-    LITERAL_FLOAT,
-    LITERAL_CHAR,
-    LITERAL_STRING
-};
-
-struct ASTLiteral
-{
-    enum LiteralType type;
-    union 
-    {
-        char* string;
-        double floating;
-        u64 integer;
-    };
-};
-
-struct ASTLoop
-{
-    struct ASTNode* block;
-    struct ASTNode* condition;
-};
-
-struct Parser
-{
-    u64 number_of_tokens;
-    struct Token* token_array;
-    u64 current_token;
-    bool mod_scope;
-	bool class_scope;
-	bool func_scope;
-};
-
-void parser_error(struct Parser, struct ASTNode, struct Token, char* message);
-struct ASTRoot* parse_block(struct Parser*);
-struct ASTNode* parse_expression(struct Parser*, u64);
-struct ASTNode* parse_statement(struct Parser*, u32);
-void print_AST_node(struct ASTNode, u8, u8);
+#include <stdio.h>
+#include <stdlib.h>
 
 struct Token* get_prev_token(struct Parser parser)
 {
@@ -197,7 +31,7 @@ struct Token* get_next_token(struct Parser parser)
 	//return NULL;
 }
 
-u32 get_precedence(struct Token token)
+unsigned int get_precedence(struct Token token)
 {
 	switch(token.type)
 	{
@@ -597,7 +431,7 @@ void parse_return(struct Parser* parser, struct ASTNode* node)
 * "parser->current_token += 2" so that I only advance the tokens if I have
 * precedence
 */
-struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
+struct ASTNode* parse_expression(struct Parser* parser, unsigned long precedence)
 {
     
 	struct ASTNode* node = malloc(sizeof(struct ASTNode));
@@ -637,6 +471,12 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 			node->type = AST_LITERAL;
 			node->literal = literal;}
 			break;
+		case TOKEN_LITERAL_CHARACTER:
+			{struct ASTLiteral* literal = malloc(sizeof(struct ASTLiteral));
+			literal->type = LITERAL_CHAR;
+			literal->string = token.string;
+			node->type = AST_LITERAL;
+			node->literal = literal;}
 		default:
 			break;
 	}
@@ -645,7 +485,7 @@ struct ASTNode* parse_expression(struct Parser* parser, u64 precedence)
 
 	//parser->current_token++;
 
-	u64 prec = get_precedence(*next);
+	unsigned long prec = get_precedence(*next);
 
     if (prec < precedence)
         return node;
@@ -846,7 +686,7 @@ void parse_struct_definition(struct Parser* parser, struct ASTNode* node)
 	// i think I'll just parse everything inside the struct def as normal statements, and then throw out weird expressions inside the typechecker
 }
 
-struct ASTNode* parse_statement(struct Parser* parser, u32 current_precedence)
+struct ASTNode* parse_statement(struct Parser* parser, unsigned int current_precedence)
 {
     struct ASTNode* node = malloc(sizeof(struct ASTNode));
     node->type = -1;
@@ -941,15 +781,15 @@ void parser_error(struct Parser parser, struct ASTNode, struct Token token, char
 	exit(-1);
 }
 
-void print_tabs(u8 num_tabs)
+void print_tabs(unsigned int num_tabs)
 {
-	for (u8 i = 0; i < num_tabs; i++)
+	for (unsigned int i = 0; i < num_tabs; i++)
 	{
 		printf("\t");
 	}
 }
 
-void print_AST_func_def(struct ASTNode node, u8 num_tabs)
+void print_AST_func_def(struct ASTNode node, unsigned int num_tabs)
 {
 	printf("Function Definition: \n");
 	print_tabs(num_tabs + 1);
@@ -961,7 +801,7 @@ void print_AST_func_def(struct ASTNode node, u8 num_tabs)
 	
 	struct ASTRoot* args = node.func_def->args;
 	
-	for (u64 i = 0; i < args->number_of_nodes; i++)
+	for (unsigned long i = 0; i < args->number_of_nodes; i++)
 	{
 		struct ASTNode node = args->nodes[i];
 		print_AST_node(node, 1, num_tabs + 2);
@@ -972,14 +812,14 @@ void print_AST_func_def(struct ASTNode node, u8 num_tabs)
 	print_tabs(num_tabs + 1);
 	printf("Body:\n");
 	
-	for (u64 i = 0; i < block->number_of_nodes; i++)
+	for (unsigned long i = 0; i < block->number_of_nodes; i++)
 	{
 		struct ASTNode node = block->nodes[i];
 		print_AST_node(node, 1, num_tabs + 2);
 	}
 }
 
-void print_AST_var_def(struct ASTNode node, u8 num_tabs)
+void print_AST_var_def(struct ASTNode node, unsigned long num_tabs)
 {
 	struct ASTNode* type_node = node.var_def->type;
 	
@@ -990,7 +830,7 @@ void print_AST_var_def(struct ASTNode node, u8 num_tabs)
 	printf(", ident = \"%s\")\n", ident_string);
 }
 
-void print_AST_array_type(struct ASTNode node, u8 num_tabs)
+void print_AST_array_type(struct ASTNode node, unsigned long num_tabs)
 {
 	struct ASTArrayType* arr_type = node.arr_type;
 	printf("Array (type = ");
@@ -1059,7 +899,7 @@ void print_operator_type(enum Operator op)
     }
 }
 
-void print_binary_op(struct ASTNode node, u8 num_tabs)
+void print_binary_op(struct ASTNode node, unsigned int num_tabs)
 {
 	struct ASTBinaryOp bin_op = *node.binary_op;
 	printf("Binary Operator\n");
@@ -1079,7 +919,7 @@ void print_binary_op(struct ASTNode node, u8 num_tabs)
 	print_AST_node(right, 1, num_tabs + 2);
 }
 
-void print_unary_op(struct ASTNode node, u8 num_tabs)
+void print_unary_op(struct ASTNode node, unsigned int num_tabs)
 {
 	struct ASTUnaryOp un_op = *node.unary_op;
 	printf("Unary Operator\n");
@@ -1102,15 +942,21 @@ void print_AST_literal(struct ASTNode node)
 	switch (lit.type)
 	{
 		case LITERAL_INT:
-			printf("Integer, Val = %llu)\n", lit.integer);
+			printf("Integer, Val = %lu)\n", lit.integer);
 			break;
 		case LITERAL_STRING:
 			printf("String, Val = \"%s\")\n", lit.string);
 			break;
+		case LITERAL_CHAR:
+			printf("Character, Val = \'%c\'\n", lit.string);
+			break;
+		case LITERAL_FLOAT:
+			printf("Float, Val = %f\n", lit.floating);
+			break;
 	}
 }
 
-void print_AST_func_call(struct ASTNode node, u8 num_tabs)
+void print_AST_func_call(struct ASTNode node, unsigned int num_tabs)
 {
 	struct ASTFuncCall call = *node.func_call;
 
@@ -1122,22 +968,22 @@ void print_AST_func_call(struct ASTNode node, u8 num_tabs)
 
 	struct ASTRoot args = *call.args;
 
-	u64 num_args = args.number_of_nodes;
+	unsigned long num_args = args.number_of_nodes;
 
-	for (u64 i = 0; i < num_args; i++)
+	for (unsigned long i = 0; i < num_args; i++)
 	{
 		struct ASTNode node = args.nodes[i];
 		print_AST_node(node, 1, num_tabs + 2);
 	}
 }
 
-void print_AST_return(struct ASTNode node, u8 num_tabs)
+void print_AST_return(struct ASTNode node, unsigned int num_tabs)
 {
 	printf("Return Statement: \n");
 	print_AST_node(*node.return_expression, 1, num_tabs + 1);
 }
 
-void print_AST_if(struct ASTNode node, u8 num_tabs)
+void print_AST_if(struct ASTNode node, unsigned int num_tabs)
 {
 	printf("If statement\n");
 
@@ -1153,7 +999,7 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
 	print_tabs(num_tabs + 1);
 	printf("Block:\n");
 
-	for (u64 i = 0; i < block.number_of_nodes; i++)
+	for (unsigned long i = 0; i < block.number_of_nodes; i++)
 	{
 		struct ASTNode node = block.nodes[i];
 		print_AST_node(node, 1, num_tabs + 2);
@@ -1171,7 +1017,7 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
 	{
 		struct ASTRoot among = *else_block.block;
 
-		for (u64 i = 0; i < among.number_of_nodes; i++)
+		for (unsigned long i = 0; i < among.number_of_nodes; i++)
 		{
 			struct ASTNode jorts = among.nodes[i];
 			print_AST_node(jorts, 1, num_tabs + 2);
@@ -1184,21 +1030,21 @@ void print_AST_if(struct ASTNode node, u8 num_tabs)
     
 }
 
-void print_AST_block(struct ASTNode node, u8 num_tabs)
+void print_AST_block(struct ASTNode node, unsigned int num_tabs)
 {
 	//print_tabs(num_tabs);
 	printf("Block:\n");
 
 	struct ASTRoot block = *node.block;
 
-	for (u64 i = 0; i < block.number_of_nodes; i++)
+	for (unsigned long i = 0; i < block.number_of_nodes; i++)
 	{
 		struct ASTNode node = block.nodes[i];
 		print_AST_node(node, 1, num_tabs + 1);
 	}
 }
 
-void print_AST_loop(struct ASTNode node, u8 num_tabs)
+void print_AST_loop(struct ASTNode node, unsigned int num_tabs)
 {
 	struct ASTLoop loop = *node.loop;
 	printf("Loop:\n");
@@ -1216,7 +1062,7 @@ void print_AST_loop(struct ASTNode node, u8 num_tabs)
 }
 
 // TODO redo entire print system to just do the tabs here in a standard way or smthn
-void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
+void print_AST_node(struct ASTNode node, unsigned int new_line, unsigned int num_tabs)
 {
 	print_tabs(num_tabs);
     switch (node.type)
@@ -1270,7 +1116,7 @@ void print_AST_node(struct ASTNode node, u8 new_line, u8 num_tabs)
 
 void print_AST(struct ASTRoot* root)
 {
-    for (u64 i = 0; i < root->number_of_nodes; i++)
+    for (unsigned long i = 0; i < root->number_of_nodes; i++)
     {
         struct ASTNode node = root->nodes[i];
         print_AST_node(node, 1, 0);

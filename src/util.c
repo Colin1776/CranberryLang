@@ -1,17 +1,16 @@
-#include "types.c"
+#include "include/util.h"
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-u64 current_time_microseconds()
+unsigned long current_time_microseconds()
 {
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
 
-    u64 time_nanoseconds = time.tv_sec * 1000000000 + time.tv_nsec;
+    unsigned long time_nanoseconds = time.tv_sec * 1000000000 + time.tv_nsec;
     return time_nanoseconds / 1000;
 }
-
-u64 time_ms_at_timer_start = 0;
 
 void start_timer()
 {
@@ -20,13 +19,13 @@ void start_timer()
 
 void stop_timer(char* msg)
 {
-    u64 time_ms = current_time_microseconds();
-    u64 time_elapsed = time_ms - time_ms_at_timer_start;
+    unsigned long time_ms = current_time_microseconds();
+    unsigned long time_elapsed = time_ms - time_ms_at_timer_start;
 
-    printf("\n%s: %llu microseconds elapsed.\n\n", msg, time_elapsed);
+    printf("\n%s: %lu microseconds elapsed.\n\n", msg, time_elapsed);
 }
 
-char* load_file(char* name, u64* size)
+char* load_file(char* name, unsigned long* size)
 {
     FILE* file = fopen(name, "rb");
     fseek(file, 0, SEEK_END);

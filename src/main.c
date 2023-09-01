@@ -5,11 +5,9 @@
 #include <sys/stat.h>
 #include <time.h>
 
-
-#include "types.c"
-#include "util.c"
-#include "modulizer.c"
-#include "parser.c"
+#include "include/util.h"
+#include "include/lexer.h"
+#include "include/parser.h"
 
 int is_source_file(char* arg)
 {
@@ -24,7 +22,7 @@ int is_source_file(char* arg)
 int main(int argc, char** argv)
 {
     char* file = NULL;
-    u64 file_size = 0;
+    unsigned long file_size = 0;
 
     for (int i = 0; i < argc; i++)
     {
